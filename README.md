@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ESP32 Web Flasher 📲
 
-## Getting Started
+A modern, browser-based ESP32 firmware flasher and serial debug viewer built with **Next.js 15**, **TypeScript**, and **Tailwind CSS**, using the `esptool-js` library and **Web Serial API**.
 
-First, run the development server:
+![screenshot](./docs/Screenshot.png)
+
+---
+
+## 🚀 Features
+
+- Flash `.bin` firmware files to ESP32 over USB
+- Select serial port and baud rate (up to 921600)
+- Start/stop real-time serial debug monitor
+- Works on **Chrome**, **Edge**, or any browser supporting Web Serial API
+- Responsive, styled with Tailwind CSS
+
+---
+
+## 🧑‍💻 Requirements
+
+- Google Chrome or Microsoft Edge (Version 89+)
+- ESP32 in bootloader mode (press and hold BOOT button when connecting)
+- `.bin` firmware file generated with ESP-IDF or Arduino
+
+---
+
+## 📦 Getting Started
+
+### 1. Clone and install dependencies:
+
+```bash
+git clone https://github.com/yourusername/esp32-web-flasher.git
+cd esp32-web-flasher
+npm install
+```
+
+### 2. Run locally:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open: [http://localhost:3000](http://localhost:3000/)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🧠 How It Works
 
-## Learn More
+- Uses [`esptool-js`](https://github.com/espressif/esptool-js) to communicate with ESP32 bootloader via USB
+- Uses `navigator.serial` to access serial ports (Web Serial API)
+- Reads `.bin` file, syncs with ESP32, erases flash, writes data
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠 Developer Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- No native drivers required, works in-browser
+- No ELF → BIN conversion (must upload precompiled `.bin` file)
+- Tested with ESP32 DevKit v1 and NodeMCU boards
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔐 Permissions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The browser will prompt for permission to access USB serial ports. Ensure you select the correct one (typically `CP210x` or `CH340`).
+
+---
+
+## 📜 License
+
+This project is open source under the [MIT License](https://www.notion.so/LICENSE).
+
+---
+
+## 🙏 Credits
+
+- [esptool-js](https://github.com/espressif/esptool-js) by Espressif
+- [Next.js](https://nextjs.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
