@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ESPLoader } from "esptool-js";
-import Image from "next/image";
 
-// TypeScript global augmentation for Web Serial API
 declare global {
   interface Navigator {
     serial: any;
@@ -52,7 +50,6 @@ export default function Home() {
       const res = await fetch("/api/firmware");
       if (!res.ok) throw new Error("Failed to fetch firmware list");
       const { data } = await res.json();
-      // if (!data) throw new Error("No data found");
       appendLog("📜 Firmware list loaded:");
       data.forEach((item: string, index: number) => {
         appendLog(`${index + 1}: ${item}`);
