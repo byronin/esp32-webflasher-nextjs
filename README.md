@@ -29,8 +29,8 @@ A modern, browser-based ESP32 firmware flasher and serial debug viewer built wit
 ### 1. Clone and install dependencies:
 
 ```bash
-git clone https://github.com/yourusername/esp32-web-flasher.git
-cd esp32-web-flasher
+git clone https://github.com/yourusername/esp32-webflasher-nextjs.git
+cd esp32-webflasher-nextjs
 npm install
 ```
 
