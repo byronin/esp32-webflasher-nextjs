@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ESPLoader } from "esptool-js";
+import Image from "next/image";
 
 // TypeScript global augmentation for Web Serial API
 declare global {
@@ -13,12 +13,14 @@ declare global {
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const [fileNames, setFileNamess] = useState([""]);
   const [log, setLog] = useState<string>("");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [port, setPort] = useState<any | null>(null);
+  const [port, setPort] = useState<SerialPort | null>(null);
   const [baudRate, setBaudRate] = useState<number>(115200);
   const [debugReader, setDebugReader] =
     useState<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const [binData, setBinData] = useState<Uint8Array | null>(null);
 
   const appendLog = (msg: string) => setLog((prev) => prev + msg + "\n");
 
@@ -42,6 +44,58 @@ export default function Home() {
     } catch (err) {
       if (err instanceof Error)
         appendLog("❌ Port selection failed: " + err.message);
+    }
+  };
+
+  const headleLoadListFile = async () => {
+    try {
+      const res = await fetch("/api/firmware");
+      if (!res.ok) throw new Error("Failed to fetch firmware list");
+      const { data } = await res.json();
+      // if (!data) throw new Error("No data found");
+      appendLog("📜 Firmware list loaded:");
+      data.forEach((item: string, index: number) => {
+        appendLog(`${index + 1}: ${item}`);
+      });
+      setFileNamess(data);
+    } catch (err) {
+      if (err instanceof Error) appendLog("❌ List load error: " + err.message);
+    }
+  };
+
+  const handleLoadFromAPI = async () => {
+    try {
+      appendLog("🌐 Fetching firmware from API...");
+      const res = await fetch("/api/firmware", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileName }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch firmware");
+      const arrayBuffer = await res.arrayBuffer();
+      const firmware = new Uint8Array(arrayBuffer);
+      setBinData(firmware);
+      setFile(null);
+      const sizeInMB = (firmware.length / (1024 * 1024)).toFixed(2);
+      appendLog(`📦 Firmware loaded from API (${sizeInMB} MB)`);
+    } catch (err) {
+      if (err instanceof Error) appendLog("❌ API load error: " + err.message);
+    }
+  };
+
+  const handleLoadFromFile = async (f: File) => {
+    try {
+      appendLog(`📁 Reading file: ${f.name}`);
+      const buffer = await f.arrayBuffer();
+      const firmware = new Uint8Array(buffer);
+      setBinData(firmware);
+      setFile(f);
+      const sizeInMB = (firmware.length / (1024 * 1024)).toFixed(2);
+      appendLog(`📦 Firmware loaded from API (${sizeInMB} MB)`);
+    } catch (err) {
+      if (err instanceof Error) appendLog("❌ File load error: " + err.message);
     }
   };
 
@@ -80,8 +134,8 @@ export default function Home() {
   };
 
   const handleFlash = async () => {
-    if (!file) {
-      appendLog("⚠️ No file selected.");
+    if (!binData) {
+      appendLog("⚠️ No firmware loaded.");
       return;
     }
 
@@ -102,12 +156,8 @@ export default function Home() {
       appendLog("💥 Erasing flash...");
       await loader.eraseFlash();
 
-      const buffer = await file.arrayBuffer();
-      const binData = new Uint8Array(buffer);
-
       appendLog("🚀 Flashing firmware...");
       await loader.flash([{ data: binData, address: 0x1000 }]);
-
       appendLog("✅ Flash complete!");
       await port.close();
     } catch (err) {
@@ -115,23 +165,29 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="mt-10 border border-gray-200 max-w-2xl mx-auto p-6 bg-white shadow-xl rounded-xl">
-      <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
-        ESP32 Web Flasher
-      </h1>
+  useEffect(() => {
+    const load = async () => {
+      await headleLoadListFile();
+    };
+    load();
+  }, []);
 
-      <div className="w-full gap-2 flex mb-2">
+  return (
+    <div className="max-w-5xl mx-auto p-6 bg-white shadow-xl rounded-xl">
+        <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
+          ESP32 Web Flasher
+        </h1>
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
         <button
           onClick={handleSelectPort}
-          className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 w-full"
+          className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
         >
           🔌 Select Serial Port
         </button>
         <select
           value={baudRate}
           onChange={(e) => setBaudRate(Number(e.target.value))}
-          className="w-full border border-gray-300 rounded px-3 py-2"
+          className="border border-gray-300 rounded px-3 py-2"
         >
           {[9600, 57600, 115200, 230400, 460800, 921600].map((rate) => (
             <option key={rate} value={rate}>
@@ -139,23 +195,55 @@ export default function Home() {
             </option>
           ))}
         </select>
+
+        <select
+          name="listFileNames"
+          className="border border-gray-300 rounded px-3 py-2"
+          onChange={(e) => {
+            const selected = e.target.value;
+            const selectedFile = fileNames.find((item) => item === selected);
+            setFileName(selectedFile || "");
+
+            console.log("Selected:", selectedFile);
+          }}
+        >
+          <option value={"--- Select firmware ---"} key={0}>
+            {"--- Select firmware ---"}
+          </option>
+          {fileNames.map((item, index) => (
+            <option key={index + 1} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleLoadFromAPI}
+          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+        >
+          🌐 Load from API
+        </button>
       </div>
-      <div className="flex flex-col md:flex-row items-center gap-4 mb-4 w-full">
-        <div className="p-2 border border-gray-300 rounded w-full">
-          <p>Select a firmware file to flash:</p>
-          <input
-            type="file"
-            accept=".bin"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="border border-gray-300 rounded px-3 py-2 w-full"
-          />
-        </div>
+
+      <div className="flex flex-col items-start gap-2 mb-4">
+        <label htmlFor="file-input" className="text-gray-700 font-medium">
+          Select a firmware file:
+        </label>
+        <input
+          id="file-input"
+          type="file"
+          accept=".bin"
+          onChange={(e) => {
+            const selected = e.target.files?.[0];
+            if (selected) handleLoadFromFile(selected);
+          }}
+          className="border border-gray-300 rounded px-3 py-2 w-full"
+        />
       </div>
 
       <div className="flex gap-4 mb-4">
         <button
           onClick={handleFlash}
-          disabled={!file || !port}
+          disabled={!binData || !port}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
           🚀 Flash Firmware
