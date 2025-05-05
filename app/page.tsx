@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ESPLoader } from "esptool-js";
+import { ESPLoader, Transport } from "esptool-js";
 
 declare global {
   interface Navigator {
@@ -130,6 +130,9 @@ export default function Home() {
     }
   };
 
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+
   const handleFlash = async () => {
     if (!binData) {
       appendLog("⚠️ No firmware loaded.");
@@ -141,12 +144,34 @@ export default function Home() {
       return;
     }
 
+    if ("getInfo" in port) {
+      const info = port.getInfo();
+      appendLog(
+        `🔎 USB VID: 0x${info.usbVendorId.toString(
+          16
+        )}, PID: 0x${info.usbProductId.toString(16)}`
+      );
+    }
+
     try {
-      appendLog(`🔌 Opening serial port at ${baudRate} baud...`);
-      await port.open({ baudRate });
+      if (!port.readable || !port.writable) {
+        await port.open({ baudRate });
+      } else {
+        await port.close();
+        appendLog("🔌 Port closed, opening again...");
+      }
 
-      const loader = new ESPLoader(port, false, terminal);
+      const transport = new Transport(port, false);
 
+      const loader = new ESPLoader({
+        transport,
+        baudrate: baudRate,
+        romBaudrate: 115200,
+        terminal,
+      });
+
+      appendLog("🕐 Waiting after reset...");
+      await delay(1000); // หรือ 2000
       appendLog("🔍 Syncing with ESP...");
       await loader.sync();
 
@@ -154,10 +179,19 @@ export default function Home() {
       await loader.eraseFlash();
 
       appendLog("🚀 Flashing firmware...");
-      await loader.flash([{ data: binData, address: 0x1000 }]);
+      await loader.writeFlash({
+        fileArray: [{ data: binData, address: 0x0 }],
+        flashSize: "4MB",
+        flashMode: "dio",
+        flashFreq: "40m",
+        eraseAll: true,
+        compress: false,
+      });;
+
       appendLog("✅ Flash complete!");
-      await port.close();
+      await transport.disconnect();
     } catch (err) {
+      console.log("Error: ", err.message);
       if (err instanceof Error) appendLog("❌ Error: " + err.message);
     }
   };
@@ -171,9 +205,9 @@ export default function Home() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 bg-white shadow-xl rounded-xl">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
-          ESP32 Web Flasher
-        </h1>
+      <h1 className="text-3xl font-bold mb-6 text-center text-blue-700">
+        ESP32 Web Flasher
+      </h1>
       <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
         <button
           onClick={handleSelectPort}
