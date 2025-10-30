@@ -36,18 +36,13 @@ export default function Home() {
 
   const handleSelectPort = async () => {
     try {
-      // Web Serial API'nin mevcut olduğunu kontrol et
       if (!navigator.serial) {
         throw new Error("Web Serial API not supported. Please use Chrome or Edge browser.");
       }
-      
       const selectedPort = await navigator.serial.requestPort();
-      
-      // Port nesnesinin geçerli olduğunu kontrol et
       if (!selectedPort || typeof selectedPort.open !== 'function') {
         throw new Error("Invalid port selected");
       }
-      
       setPort(selectedPort);
       appendLog("✅ Serial port selected.");
       appendLog(`📱 Port info: ${selectedPort.getInfo ? 'Available' : 'Basic port'}`);
@@ -64,25 +59,19 @@ export default function Home() {
       return;
     }
     try {
-      // Port zaten açıksa kapat
       if (port.readable || port.writable) {
         await port.close();
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      
       await port.open({ baudRate });
-      
-      // Port'un doğru şekilde açıldığını kontrol et
       if (!port.readable) {
         throw new Error("Port readable stream not available");
       }
-      
       const textDecoder = new TextDecoderStream();
       void port.readable?.pipeTo(textDecoder.writable);
       const reader = textDecoder.readable.getReader();
       setDebugReader(reader);
       appendLog("🪵 Debug serial started...");
-
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -91,12 +80,9 @@ export default function Home() {
     } catch (err) {
       if (err instanceof Error) {
         appendLog("❌ Debug error: " + err.message);
-        // Port'u kapatmaya çalış
         try {
           await port.close();
-        } catch {
-          // Port kapatma hatası görmezden gel
-        }
+        } catch {}
       }
     }
   };
@@ -117,152 +103,55 @@ export default function Home() {
       appendLog("⚠️ No file selected.");
       return;
     }
-
     if (!port) {
       appendLog("⚠️ No serial port selected.");
       return;
     }
-
     try {
       appendLog(`🔌 Opening serial port at ${baudRate} baud...`);
-      
-      // Port zaten açıksa kapat
       if (port.readable || port.writable) {
         await port.close();
-        await new Promise(resolve => setTimeout(resolve, 500)); // Daha uzun bekleme
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
-      
-      // Port'u yeniden aç
       await port.open({ baudRate });
-      
-      // Port'un tamamen hazır olmasını bekle
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Port'un doğru şekilde açıldığını kontrol et
-      if (!port.readable || !port.writable) {
-        throw new Error("Port could not be opened properly");
-      }
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       appendLog("🔍 Creating ESPLoader...");
-      
-      // Port nesnesinin tüm gerekli özelliklerini kontrol et
-      if (!port || typeof port.open !== 'function' || !port.readable || !port.writable) {
-        throw new Error("Invalid port object - missing required properties");
-      }
-      
-      // ESPLoader için port'u hazırla - daha güvenli yaklaşım
-      let loader;
-      try {
-        // Port nesnesini ESPLoader için hazırla - getInfo sorununu çöz
-        const preparedPort = {
-          // Tüm port özelliklerini kopyala
-          ...port,
-          // getInfo fonksiyonunu güvenli hale getir
-          getInfo: function() {
-            try {
-              // Orijinal getInfo varsa kullan
-              if (port.getInfo && typeof port.getInfo === 'function') {
-                return port.getInfo();
-              }
-            } catch {
-              // getInfo hatası varsa fallback kullan
-            }
-            // Fallback bilgileri
-            return {
-              usbVendorId: 0x10C4,
-              usbProductId: 0xEA60,
-              serialNumber: 'ESP32',
-              manufacturerName: 'Silicon Labs',
-              productName: 'CP210x USB to UART Bridge'
-            };
-          },
-          // Diğer gerekli özellikleri kopyala
-          open: port.open.bind(port),
-          close: port.close.bind(port),
-          readable: port.readable,
-          writable: port.writable
-        };
-        
-        // Port nesnesinin tüm özelliklerini kontrol et
-        appendLog(`🔍 Port properties: ${Object.keys(preparedPort).join(', ')}`);
-        appendLog(`🔍 getInfo type: ${typeof preparedPort.getInfo}`);
-        appendLog(`🔍 getInfo result: ${JSON.stringify(preparedPort.getInfo())}`);
-        
-        appendLog("🔧 Port wrapper created successfully");
-        
-        // ESPLoader'ı daha güvenli şekilde oluştur
-        try {
-          loader = new ESPLoader({ port: preparedPort, baudrate: baudRate, terminal });
-          appendLog("✅ ESPLoader created successfully");
-        } catch (esploaderError) {
-          appendLog(`❌ ESPLoader creation error: ${esploaderError.message}`);
-          // Alternatif yaklaşım - port nesnesini daha basit hale getir
-          const simplePort = {
-            open: port.open.bind(port),
-            close: port.close.bind(port),
-            readable: port.readable,
-            writable: port.writable,
-            getInfo: () => ({
-              usbVendorId: 0x10C4,
-              usbProductId: 0xEA60,
-              serialNumber: 'ESP32'
-            })
-          };
-          appendLog("🔄 Trying with simplified port...");
-          try {
-            loader = new ESPLoader({ port: simplePort, baudrate: baudRate, terminal });
-            appendLog("✅ ESPLoader created with simplified port");
-          } catch (simpleError) {
-            appendLog(`❌ Simplified port error: ${simpleError.message}`);
-            // Son çare - port nesnesini tamamen yeniden oluştur
-            const minimalPort = {
-              open: port.open.bind(port),
-              close: port.close.bind(port),
-              readable: port.readable,
-              writable: port.writable,
-              getInfo: function() {
-                return {
-                  usbVendorId: 0x10C4,
-                  usbProductId: 0xEA60,
-                  serialNumber: 'ESP32'
-                };
-              }
-            };
-            appendLog("🔄 Trying with minimal port...");
-            loader = new ESPLoader({ port: minimalPort, baudrate: baudRate, terminal });
-            appendLog("✅ ESPLoader created with minimal port");
-          }
-        }
-      } catch (loaderError) {
-        appendLog(`❌ ESPLoader error details: ${loaderError.message}`);
-        throw new Error(`ESPLoader creation failed: ${loaderError.message}`);
-      }
+      // Pass raw Web Serial port directly; ESPLoader will wrap with Transport
+      const loader = new ESPLoader({ port, baudrate: baudRate, terminal });
+      appendLog("✅ ESPLoader created successfully");
 
-      appendLog("🔍 Syncing with ESP...");
-      await loader.sync();
+      // Follow official flow: connect/detect + optional stub + change baud
+      appendLog("🔗 Connecting to chip...");
+      await loader.main("default_reset");
 
-      appendLog("💥 Erasing flash...");
-      await loader.eraseFlash();
-
+      // Prepare firmware
       const buffer = await file.arrayBuffer();
       const binData = new Uint8Array(buffer);
-
-      appendLog("🚀 Flashing firmware...");
       const address = parseInt(flashAddress, 16);
       appendLog(`📍 Flash address: ${flashAddress} (${address})`);
-      await loader.flash([{ data: binData, address: address }]);
+
+      appendLog("💥 Erasing + flashing (compressed)...");
+      await loader.writeFlash({
+        fileArray: [{ data: binData, address }],
+        flashSize: "keep",
+        flashMode: "keep",
+        flashFreq: "keep",
+        compress: true,
+        reportProgress: (_i, sent, total) => {
+          const pct = total > 0 ? Math.floor((sent / total) * 100) : 0;
+          appendLog(`➡️ ${pct}%`);
+        },
+      });
 
       appendLog("✅ Flash complete!");
       await port.close();
     } catch (err) {
       if (err instanceof Error) {
         appendLog("❌ Error: " + err.message);
-        // Port'u kapatmaya çalış
         try {
           await port.close();
-        } catch {
-          // Port kapatma hatası görmezden gel
-        }
+        } catch {}
       }
     }
   };
@@ -301,9 +190,8 @@ export default function Home() {
           className="w-full border border-gray-300 rounded px-3 py-2"
         >
           <option value="0x1000">0x1000 - Bootloader (Arduino)</option>
-          <option value="0x0">0x0 - Bootloader (Alternative)</option>
-          <option value="0x10000">0x10000 - Partition Table</option>
-          <option value="0x20000">0x20000 - Application (ESP-IDF)</option>
+          <option value="0x10000">0x10000 - App (common)</option>
+          <option value="0x20000">0x20000 - App (ESP-IDF)</option>
         </select>
       </div>
       <div className="flex flex-col md:flex-row items-center gap-4 mb-4 w-full">
