@@ -192,7 +192,7 @@ export default function Home() {
         
         // ESPLoader'ı daha güvenli şekilde oluştur
         try {
-          loader = new ESPLoader(preparedPort, false, terminal);
+          loader = new ESPLoader(preparedPort, baudRate, terminal);
           appendLog("✅ ESPLoader created successfully");
         } catch (esploaderError) {
           appendLog(`❌ ESPLoader creation error: ${esploaderError.message}`);
@@ -210,7 +210,7 @@ export default function Home() {
           };
           appendLog("🔄 Trying with simplified port...");
           try {
-            loader = new ESPLoader(simplePort, false, terminal);
+            loader = new ESPLoader(simplePort, baudRate, terminal);
             appendLog("✅ ESPLoader created with simplified port");
           } catch (simpleError) {
             appendLog(`❌ Simplified port error: ${simpleError.message}`);
@@ -229,7 +229,7 @@ export default function Home() {
               }
             };
             appendLog("🔄 Trying with minimal port...");
-            loader = new ESPLoader(minimalPort, false, terminal);
+            loader = new ESPLoader(minimalPort, baudRate, terminal);
             appendLog("✅ ESPLoader created with minimal port");
           }
         }
