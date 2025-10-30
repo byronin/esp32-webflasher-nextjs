@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -79,7 +78,7 @@ export default function Home() {
       }
       
       const textDecoder = new TextDecoderStream();
-      const readableStreamClosed = port.readable?.pipeTo(textDecoder.writable);
+      void port.readable?.pipeTo(textDecoder.writable);
       const reader = textDecoder.readable.getReader();
       setDebugReader(reader);
       appendLog("🪵 Debug serial started...");
@@ -95,7 +94,7 @@ export default function Home() {
         // Port'u kapatmaya çalış
         try {
           await port.close();
-        } catch (closeErr) {
+        } catch {
           // Port kapatma hatası görmezden gel
         }
       }
@@ -165,7 +164,7 @@ export default function Home() {
               if (port.getInfo && typeof port.getInfo === 'function') {
                 return port.getInfo();
               }
-            } catch (e) {
+            } catch {
               // getInfo hatası varsa fallback kullan
             }
             // Fallback bilgileri
@@ -261,7 +260,7 @@ export default function Home() {
         // Port'u kapatmaya çalış
         try {
           await port.close();
-        } catch (closeErr) {
+        } catch {
           // Port kapatma hatası görmezden gel
         }
       }
