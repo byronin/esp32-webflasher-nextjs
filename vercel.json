@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "framework": "nextjs",
+  "functions": {
+    "**/*.func": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}

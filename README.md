@@ -66,6 +66,29 @@ The browser will prompt for permission to access USB serial ports. Ensure you se
 
 ---
 
+## 🌥 Deploy to Vercel
+
+This project is configured for Vercel out of the box.
+
+### Quick deploy
+- Install the Vercel CLI and deploy:
+```bash
+npm i -g vercel
+vercel
+```
+- Or connect the repo on the Vercel dashboard and click “Deploy”.
+
+### Notes for Web Serial
+- Web Serial requires HTTPS. Vercel provides HTTPS by default.
+- We set `Permissions-Policy: serial=(self)` in `next.config.ts` to ensure the API isn’t blocked by restrictive headers.
+- Supported browsers: Chrome/Edge on desktop. Not available on iOS Safari.
+
+### Environment
+- Node.js 20 runtime is declared via `vercel.json`.
+- No environment variables are required for basic usage.
+
+---
+
 ## 📜 License
 
 This project is open source under the [MIT License](https://www.notion.so/LICENSE).

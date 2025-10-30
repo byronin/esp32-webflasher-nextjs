@@ -1,0 +1,15 @@
+# Ignore local-only and docs on deploy
+.git/
+.gitignore
+README.md
+LICENSE
+docs/
+
+# Build caches and editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Node caches (build on Vercel)
+node_modules/
+.next/
